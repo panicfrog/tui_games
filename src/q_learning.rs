@@ -1,5 +1,5 @@
 use crate::env::Env;
-use rand::{Rng};
+use rand::Rng;
 use rand::seq::IteratorRandom;
 use std::collections::HashMap;
 
@@ -13,7 +13,7 @@ pub fn q_learning<E: Env>(
 ) -> HashMap<(E::State, E::Action), f32>
 where
     E::State: Copy + Eq + std::hash::Hash,
-    E::Action: Copy + Eq + std::hash::Hash,
+    E::Action: Copy + Eq + std::hash::Hash + std::fmt::Debug,
 {
     let mut q_table: HashMap<(E::State, E::Action), f32> = HashMap::new();
     let mut rng = rand::rng();
@@ -58,7 +58,7 @@ where
             // 奖励函数
             let reward = if env.is_win() { 1.0 } else { -0.01 };
 
-            // 计算下一个状态的最大 Q 值，排除 NaN
+            // 计算下一个状态的最大 Q 值
             let max_q = env
                 .legal_actions()
                 .iter()
@@ -68,6 +68,7 @@ where
 
             // 更新 Q 表
             let entry = q_table.entry((state, action)).or_insert(0.0);
+            // Q(s, a) ← Q(s, a) + α * [r + γ * max Q(s', a') - Q(s, a)]
             *entry += alpha * (reward + gamma * max_q - *entry);
 
             state = next_state;
@@ -108,7 +109,8 @@ where
                 let q1 = *q_table.get(&(state, *a1)).unwrap_or(&0.0);
                 let q2 = *q_table.get(&(state, *a2)).unwrap_or(&0.0);
                 q1.partial_cmp(&q2).unwrap_or(std::cmp::Ordering::Equal)
-            }) else {
+            })
+        else {
             // 如果没有合法动作，提前结束
             break;
         };
