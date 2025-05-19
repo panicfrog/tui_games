@@ -1,131 +1,82 @@
-// main.rs
-mod maze;
-
-use crossterm::event::{self, Event, KeyCode};
-use crossterm::terminal::{enable_raw_mode, disable_raw_mode};
-use ratatui::{
-    backend::CrosstermBackend,
-    layout::{Constraint, Layout},
-    style::{Color, Style},
-    text::{Line, Span, Text},
-    widgets::{Block, Borders, Paragraph},
-    Terminal,
-};
+mod env;
+mod games;
+mod q_learning;
 use std::{error::Error, io, time::Duration};
 
-use maze::{Maze, Position, TileType};
+use crossterm::event::{self, Event, KeyCode};
+use crossterm::terminal::{disable_raw_mode, enable_raw_mode};
+use crossterm::{execute, terminal::Clear, terminal::ClearType};
+use ratatui::{
+    Terminal,
+    backend::CrosstermBackend,
+    layout::{Constraint, Layout},
+    widgets::{Block, Borders, Paragraph},
+};
 
-struct Game {
-    maze: Maze,
-    player: Position,
-    finished: bool,
-}
+use games::maze::game::{Game, InputAction};
 
-impl Game {
-    fn new(width: usize, height: usize) -> Self {
-        let maze = Maze::new(width, height);
-        Game {
-            player: maze.start,
-            maze,
-            finished: false,
+fn keycode_to_action(key: KeyCode, in_victory: bool) -> Option<InputAction> {
+    use InputAction::*;
+    use crossterm::event::KeyCode::*;
+
+    if in_victory {
+        match key {
+            Left | Right => Some(ToggleButton),
+            Enter => Some(Confirm),
+            _ => None,
         }
-    }
-
-    fn try_move(&mut self, dx: isize, dy: isize) {
-        if self.finished {
-            return;
+    } else {
+        match key {
+            Up => Some(MoveUp),
+            Down => Some(MoveDown),
+            Left => Some(MoveLeft),
+            Right => Some(MoveRight),
+            Char('q') => Some(Quit),
+            _ => None,
         }
-        let nx = self.player.x as isize + dx;
-        let ny = self.player.y as isize + dy;
-
-        if nx >= 0
-            && ny >= 0
-            && nx < self.maze.width as isize
-            && ny < self.maze.height as isize
-        {
-            let c = self.maze.grid[ny as usize][nx as usize];
-            if c != TileType::Wall {
-                self.player.x = nx as usize;
-                self.player.y = ny as usize;
-                if c == TileType::Exit {
-                    self.finished = true;
-                }
-            }
-        }
-    }
-
-    fn render(&self) -> Text {
-        let mut lines = Vec::new();
-        for (y, row) in self.maze.grid.iter().enumerate() {
-            let mut spans = Vec::new();
-            for (x, &ch) in row.iter().enumerate() {
-                let is_player = self.player.x == x && self.player.y == y;
-                let style = if is_player {
-                    Style::default().fg(Color::Green).bg(Color::Black)
-                } else {
-                    match ch {
-                        TileType::Wall => Style::default().bg(Color::White),
-                        TileType::Exit => Style::default().fg(Color::Black).bg(Color::Yellow),
-                        TileType::Path => Style::default().bg(Color::DarkGray),
-                    }
-                };
-
-                let display_char = match (is_player, ch) {
-                    (true, _) => '@',
-                    (false, TileType::Exit) => 'E',
-                    _ => ' ',
-                };
-
-                spans.push(Span::styled(display_char.to_string(), style));
-            }
-            lines.push(Line::from(spans));
-        }
-        Text::from(lines)
     }
 }
 
 fn main() -> Result<(), Box<dyn Error>> {
     enable_raw_mode()?;
-    let mut stdout = io::stdout();
-    let backend = CrosstermBackend::new(&mut stdout);
-    let mut terminal = Terminal::new(backend)?;
+    // let mut stdout = io::stdout();
+    // let backend = CrosstermBackend::new(&mut stdout);
+    // let mut terminal = Terminal::new(backend)?;
+    // execute!(std::io::stdout(), Clear(ClearType::All))?;
 
-    let mut game = Game::new(41, 21); // 可调节尺寸
+    let mut game = Game::new(41, 21);
+    let max_steps = game.maze.max_steps();
+    let q = q_learning::q_learning(&mut game, 1000, max_steps, 0.1, 0.9, 0.1);
+    let actions = q_learning::replay_best_path(&mut game, &q, max_steps);
+    println!("Best path: {:?}", actions);
+    // loop {
+    //     terminal.draw(|f| {
+    //         let layout = Layout::default()
+    //             .constraints([Constraint::Min(0)])
+    //             .split(f.area());
+    //         let (content, title) = game.render();
+    //         let para =
+    //             Paragraph::new(content).block(Block::default().borders(Borders::ALL).title(title));
+    //         f.render_widget(para, layout[0]);
+    //     })?;
 
-    loop {
-        if game.finished {
-            terminal.draw(|f| {
-                let para = Paragraph::new("🎉 You reached the goal!\nPress 'q' to quit.")
-                    .block(Block::default().borders(Borders::ALL).title("Victory"))
-                    .style(Style::default());
-                f.render_widget(para, f.area());
-            })?;
-        } else {
-            terminal.draw(|f| {
-                let layout = Layout::default()
-                    .constraints([Constraint::Min(0)])
-                    .split(f.area());
-                let para = Paragraph::new(game.render())
-                    .block(Block::default().borders(Borders::ALL).title("Maze"))
-                    .style(Style::default());
-                f.render_widget(para, layout[0]);
-            })?;
-        }
+    //     if event::poll(Duration::from_millis(100))? {
+    //         if let Event::Key(key) = event::read()? {
+    //             if key.kind == event::KeyEventKind::Press {
+    //                 if let Some(action) = keycode_to_action(key.code, game.finished) {
+    //                     if game.handle_action(action) {
+    //                         execute!(
+    //                             std::io::stdout(),
+    //                             crossterm::terminal::Clear(crossterm::terminal::ClearType::All)
+    //                         )?;
+    //                         break;
+    //                     }
+    //                 }
+    //             }
+    //         }
+    //     }
+    // }
 
-        if event::poll(Duration::from_millis(100))? {
-            if let Event::Key(key) = event::read()? {
-                match key.code {
-                    KeyCode::Up => game.try_move(0, -1),
-                    KeyCode::Down => game.try_move(0, 1),
-                    KeyCode::Left => game.try_move(-1, 0),
-                    KeyCode::Right => game.try_move(1, 0),
-                    KeyCode::Char('q') => break,
-                    _ => {}
-                }
-            }
-        }
-    }
-
-    disable_raw_mode()?;
+    // disable_raw_mode()?;
     Ok(())
 }

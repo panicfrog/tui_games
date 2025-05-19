@@ -583,7 +583,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "tui_snake"
+name = "tui_game"
 version = "0.1.0"
 dependencies = [
  "crossterm 0.29.0",
