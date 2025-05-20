@@ -22,7 +22,7 @@ where
         let mut state = env.reset();
 
         for _ in 0..max_steps {
-            let actions = env.legal_actions();
+            let actions = env.legal_actions(None);
             if actions.is_empty() {
                 break;
             }
@@ -60,7 +60,7 @@ where
 
             // 计算下一个状态的最大 Q 值
             let max_q = env
-                .legal_actions()
+                .legal_actions(Some((next_state, action)))
                 .iter()
                 .map(|&a| *q_table.get(&(next_state, a)).unwrap_or(&0.0))
                 .filter(|q| !q.is_nan())
@@ -95,7 +95,7 @@ where
     let mut state = env.reset();
 
     for _ in 0..max_steps {
-        let actions = env.legal_actions();
+        let actions = env.legal_actions(None);
 
         // 过滤掉 Q 值为 NaN 的动作，并找出 Q 值最大的动作
         let Some(action) = actions
