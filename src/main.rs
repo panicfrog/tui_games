@@ -61,7 +61,22 @@ fn main() -> Result<(), Box<dyn Error>> {
     let mut replaying = true;
     let mut game = Game::new(41, 21);
     let (tx, rx) = mpsc::channel();
-    let tx = Arc::new(Mutex::new(tx));
+    if replaying {
+        let max_steps = game.maze.max_steps();
+        let q = q_learning::q_learning(&mut game, 999, max_steps, 0.1, 0.9, 0.1);
+        let actions = q_learning::replay_best_path(&mut game, &q, max_steps);
+        game.reset();
+        let actions_clone = actions.clone();
+        thread::spawn(move || {
+            thread::sleep(Duration::from_secs(1));
+            for action in actions_clone {
+                tx.send(Some(action)).unwrap();
+                thread::sleep(Duration::from_millis(150));
+            }
+            tx.send(None).unwrap();
+        });
+    }
+
     loop {
         terminal.draw(|f| {
             let layout = Layout::default()
@@ -81,19 +96,6 @@ fn main() -> Result<(), Box<dyn Error>> {
                     replaying = false;
                 }
             }
-            let max_steps = game.maze.max_steps();
-            let q = q_learning::q_learning(&mut game, 999, max_steps, 0.1, 0.9, 0.1);
-            let actions = q_learning::replay_best_path(&mut game, &q, max_steps);
-            game.reset();
-            let actions_clone = actions.clone();
-            let tx_clone = Arc::clone(&tx);
-            thread::spawn(move || {
-                for action in actions_clone {
-                    tx_clone.lock().unwrap().send(Some(action)).unwrap();
-                    thread::sleep(Duration::from_millis(150));
-                }
-                tx_clone.lock().unwrap().send(None).unwrap();
-            });
         } else {
             if event::poll(Duration::from_millis(100))? {
                 if let Event::Key(key) = event::read()? {
