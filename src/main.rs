@@ -2,7 +2,7 @@ mod env;
 mod games;
 mod q_learning;
 use std::{thread};
-use std::sync::{mpsc, Arc, Mutex};
+use std::sync::mpsc;
 use std::{error::Error, io, time::Duration};
 use env::Env;
 
