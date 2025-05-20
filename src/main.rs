@@ -63,18 +63,22 @@ fn main() -> Result<(), Box<dyn Error>> {
     let (tx, rx) = mpsc::channel();
     if replaying {
         let max_steps = game.maze.max_steps();
-        let q = q_learning::q_learning(&mut game, 999, max_steps, 0.1, 0.9, 0.1);
+        let q = q_learning::q_learning(&mut game, 2000, max_steps, 0.1, 0.9);
         let actions = q_learning::replay_best_path(&mut game, &q, max_steps);
         game.reset();
-        let actions_clone = actions.clone();
-        thread::spawn(move || {
-            thread::sleep(Duration::from_secs(1));
-            for action in actions_clone {
-                tx.send(Some(action)).unwrap();
-                thread::sleep(Duration::from_millis(150));
-            }
+        if let Some(actions) = actions {
+            let actions_clone = actions.clone();
+            thread::spawn(move || {
+                thread::sleep(Duration::from_secs(1));
+                for action in actions_clone {
+                    tx.send(Some(action)).unwrap();
+                    thread::sleep(Duration::from_millis(150));
+                }
+                tx.send(None).unwrap();
+            });
+        } else {
             tx.send(None).unwrap();
-        });
+        }
     }
 
     loop {
