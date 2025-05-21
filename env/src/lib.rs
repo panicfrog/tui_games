@@ -19,3 +19,5 @@ pub trait Env {
     #[allow(dead_code)]
     fn is_win(&self) -> bool;
 }
+
+pub use rand;

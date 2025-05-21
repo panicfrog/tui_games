@@ -1,4 +1,4 @@
-use crate::env::Env;
+use env::Env;
 use std::collections::HashMap;
 
 pub fn estimate_max_q_value<E: Env>(

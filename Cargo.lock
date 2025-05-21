@@ -179,6 +179,13 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "48c757948c5ede0e46177b7add2e67155f70e33c07fea8284df6576da70b3719"
 
 [[package]]
+name = "env"
+version = "0.1.0"
+dependencies = [
+ "rand",
+]
+
+[[package]]
 name = "equivalent"
 version = "1.0.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -205,6 +212,16 @@ name = "foldhash"
 version = "0.1.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d9c4f5dac5e15c24eb999c26181a6ca40b39fe946cbe4c263c7209467bc83af2"
+
+[[package]]
+name = "games"
+version = "0.1.0"
+dependencies = [
+ "crossterm 0.29.0",
+ "env",
+ "machine_learning",
+ "ratatui",
+]
 
 [[package]]
 name = "getrandom"
@@ -325,6 +342,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "machine_learning"
+version = "0.1.0"
+dependencies = [
+ "env",
+]
+
+[[package]]
 name = "mio"
 version = "1.0.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -364,6 +388,15 @@ name = "paste"
 version = "1.0.15"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "57c0d7b74b563b49d38dae00a0c37d4d6de9b432382b2892f0574ddcae73fd0a"
+
+[[package]]
+name = "playground"
+version = "0.1.0"
+dependencies = [
+ "env",
+ "games",
+ "machine_learning",
+]
 
 [[package]]
 name = "ppv-lite86"
@@ -580,15 +613,6 @@ dependencies = [
  "proc-macro2",
  "quote",
  "unicode-ident",
-]
-
-[[package]]
-name = "tui_game"
-version = "0.1.0"
-dependencies = [
- "crossterm 0.29.0",
- "rand",
- "ratatui",
 ]
 
 [[package]]

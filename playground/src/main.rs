@@ -1,29 +1,25 @@
-mod env;
-mod games;
-mod machine_learning;
-
 use env::Env;
 use machine_learning::q_learning;
 use std::sync::mpsc;
 use std::thread;
 use std::{error::Error, io, time::Duration};
 
-use crossterm::event::{self, Event, KeyCode};
-use crossterm::terminal::{disable_raw_mode, enable_raw_mode};
-use crossterm::{execute, terminal::Clear, terminal::ClearType};
+use games::crossterm::event::{self, Event, KeyCode};
+use games::crossterm::terminal::{disable_raw_mode, enable_raw_mode};
+use games::crossterm::{execute, terminal::Clear, terminal::ClearType};
 use games::maze::map::Action;
-use ratatui::{
-    Terminal,
+use games::ratatui::{
     backend::CrosstermBackend,
     layout::{Constraint, Layout},
     widgets::{Block, Borders, Paragraph},
+    Terminal,
 };
 
 use games::maze::game::{Game, InputAction};
 
 fn keycode_to_action(key: KeyCode, in_victory: bool) -> Option<InputAction> {
+    use games::crossterm::event::KeyCode::*;
     use InputAction::*;
-    use crossterm::event::KeyCode::*;
 
     if in_victory {
         match key {
@@ -61,8 +57,8 @@ fn main() -> Result<(), Box<dyn Error>> {
     execute!(std::io::stdout(), Clear(ClearType::All))?;
 
     let mut replaying = true;
-    let width = 41;
-    let height = 21;
+    let width = 21;
+    let height = 11;
     let mut game = Game::new(width, height);
     let (tx, rx) = mpsc::channel();
     if replaying {

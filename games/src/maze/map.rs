@@ -1,6 +1,6 @@
 // maze.rs
-use rand::Rng;
-use rand::seq::SliceRandom;
+use env::rand::seq::SliceRandom;
+use env::rand::Rng;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub struct Position {
@@ -29,7 +29,7 @@ impl MazeMap {
         let height = if height % 2 == 0 { height - 1 } else { height };
 
         let mut grid = vec![vec![TileType::Wall; width]; height];
-        let mut rng = rand::rng();
+        let mut rng = env::rand::rng();
         let mut walls = Vec::new();
 
         let sx = rng.random_range(1..width / 2) * 2 - 1;

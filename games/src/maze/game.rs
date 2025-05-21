@@ -2,7 +2,7 @@ use ratatui::style::{Color, Style};
 use ratatui::text::{Line, Span, Text};
 
 use super::map::{Action, MazeMap, MazeStatus, Position, TileType};
-use crate::env::Env;
+use env::Env;
 
 pub struct Game {
     pub maze: MazeMap,

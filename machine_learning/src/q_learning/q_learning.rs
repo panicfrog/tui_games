@@ -1,6 +1,6 @@
 use super::q_utils::{estimate_double_q_target, estimate_max_q_value};
-use crate::env::Env;
-use rand::Rng;
+use env::rand::Rng;
+use env::Env;
 use std::collections::HashMap;
 
 #[allow(dead_code)]
@@ -16,7 +16,7 @@ where
     E::Action: Copy + Eq + std::hash::Hash + std::fmt::Debug,
 {
     let mut q_table: HashMap<(E::State, E::Action), f32> = HashMap::new();
-    let mut rng = rand::rng();
+    let mut rng = env::rand::rng();
     let mut win_count = 0;
 
     for episode in 0..episodes {
@@ -146,7 +146,7 @@ where
 {
     let mut q1: HashMap<(E::State, E::Action), f32> = HashMap::new();
     let mut q2: HashMap<(E::State, E::Action), f32> = HashMap::new();
-    let mut rng = rand::rng();
+    let mut rng = env::rand::rng();
     let mut win_count = 0;
 
     for episode in 0..episodes {

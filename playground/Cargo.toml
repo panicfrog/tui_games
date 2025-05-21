@@ -1,0 +1,9 @@
+[package]
+name = "playground"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+games = { path = "../games" }
+env = { path = "../env" }
+machine_learning = { path = "../machine_learning" }

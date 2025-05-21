@@ -1,9 +1,10 @@
-[package]
-name = "tui_game"
-version = "0.1.0"
-edition = "2024"
+[workspace]
 
-[dependencies]
-crossterm = "0.29.0"
-rand = "0.9.1"
-ratatui = "0.29.0"
+resolver = "3"
+
+members = [
+    "games",
+    "env",
+    "machine_learning",
+    "playground",
+]
