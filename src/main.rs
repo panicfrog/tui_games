@@ -1,10 +1,12 @@
 mod env;
 mod games;
-mod q_learning;
-use std::{thread};
-use std::sync::mpsc;
-use std::{error::Error, io, time::Duration};
+mod machine_learning;
+
 use env::Env;
+use machine_learning::q_learning;
+use std::sync::mpsc;
+use std::thread;
+use std::{error::Error, io, time::Duration};
 
 use crossterm::event::{self, Event, KeyCode};
 use crossterm::terminal::{disable_raw_mode, enable_raw_mode};
@@ -59,12 +61,16 @@ fn main() -> Result<(), Box<dyn Error>> {
     execute!(std::io::stdout(), Clear(ClearType::All))?;
 
     let mut replaying = true;
-    let mut game = Game::new(41, 21);
+    let width = 41;
+    let height = 21;
+    let mut game = Game::new(width, height);
     let (tx, rx) = mpsc::channel();
     if replaying {
         let max_steps = game.maze.max_steps();
-        let q = q_learning::q_learning(&mut game, 2000, max_steps, 0.1, 0.9);
+        let q = q_learning::q_learning(&mut game, width * height * 20, max_steps, 0.1, 0.9);
         let actions = q_learning::replay_best_path(&mut game, &q, max_steps);
+        // let (q1, q2) = q_learning::double_q_learning(&mut game, width * height * 20, max_steps, 0.1, 0.9);
+        // let actions = q_learning::replay_best_path_double_q(&mut game, &q1, &q2, max_steps);
         game.reset();
         if let Some(actions) = actions {
             let actions_clone = actions.clone();
@@ -106,10 +112,7 @@ fn main() -> Result<(), Box<dyn Error>> {
                     if key.kind == event::KeyEventKind::Press {
                         if let Some(action) = keycode_to_action(key.code, game.finished) {
                             if game.handle_action(action) {
-                                execute!(
-                                    std::io::stdout(),
-                                    Clear(ClearType::All)
-                                )?;
+                                execute!(std::io::stdout(), Clear(ClearType::All))?;
                                 break;
                             }
                         }

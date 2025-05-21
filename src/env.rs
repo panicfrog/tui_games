@@ -10,7 +10,10 @@ pub trait Env {
     #[allow(dead_code)]
     fn current_state(&self) -> Self::State;
     #[allow(dead_code)]
-    fn legal_actions(&self, state_and_action: Option<(Self::State, Self::Action)>) -> Vec<Self::Action>;
+    fn legal_actions(
+        &self,
+        state_and_action: Option<(Self::State, Self::Action)>,
+    ) -> Vec<Self::Action>;
     #[allow(dead_code)]
     fn is_terminal(&self) -> bool;
     #[allow(dead_code)]

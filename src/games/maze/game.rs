@@ -190,16 +190,17 @@ impl Env for Game {
         self.player
     }
 
-    fn legal_actions(&self, state_and_action: Option<(Self::State, Self::Action)>) -> Vec<Self::Action> {
+    fn legal_actions(
+        &self,
+        state_and_action: Option<(Self::State, Self::Action)>,
+    ) -> Vec<Self::Action> {
         let sa = if let Some((state, action)) = state_and_action {
             (state, Some(action))
         } else {
             (self.player, self.last_action)
         };
-        let (actions, _) =
-            self.maze
-                .allowed_actions_and_status(sa.0, sa.1, self.steps);
-            
+        let (actions, _) = self.maze.allowed_actions_and_status(sa.0, sa.1, self.steps);
+
         actions
     }
     fn is_terminal(&self) -> bool {
