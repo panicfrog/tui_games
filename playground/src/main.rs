@@ -71,7 +71,7 @@ fn main() -> Result<(), Box<dyn Error>> {
         if let Some(actions) = actions {
             let actions_clone = actions.clone();
             thread::spawn(move || {
-                thread::sleep(Duration::from_secs(1));
+                thread::sleep(Duration::from_millis(300));
                 for action in actions_clone {
                     tx.send(Some(action)).unwrap();
                     thread::sleep(Duration::from_millis(150));

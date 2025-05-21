@@ -3,20 +3,21 @@ pub trait Env {
     type Action;
     type Status;
 
-    #[allow(dead_code)]
+    // reset the environment to its initial state
     fn reset(&mut self) -> Self::State;
-    #[allow(dead_code)]
+    // take an action and return the next state and status
     fn step(&mut self, action: Self::Action) -> (Self::State, Self::Status);
-    #[allow(dead_code)]
+    // get the current state of the environment
     fn current_state(&self) -> Self::State;
-    #[allow(dead_code)]
+    // get the legal actions for the current state or a given state and action to return spacific actions
+    // if state_and_action is None, return the legal actions for the current state
     fn legal_actions(
         &self,
         state_and_action: Option<(Self::State, Self::Action)>,
     ) -> Vec<Self::Action>;
-    #[allow(dead_code)]
+    // check if the environment is in a terminal state
     fn is_terminal(&self) -> bool;
-    #[allow(dead_code)]
+    // check if the environment is in a win state
     fn is_win(&self) -> bool;
 }
 
