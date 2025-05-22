@@ -8,12 +8,14 @@ pub struct Position {
     pub y: usize,
 }
 
-#[derive(Clone, Copy, PartialEq, PartialOrd)]
+#[derive(Clone, Copy, PartialEq, PartialOrd, Debug)]
 pub enum TileType {
     Wall,
     Path,
     Exit,
 }
+
+#[derive(Clone, Debug)]
 pub struct MazeMap {
     pub width: usize,
     pub height: usize,

@@ -8,3 +8,4 @@ crate-type = ["cdylib", "rlib"]
 
 [dependencies]
 env = { path = "../env"}
+rayon = "1.10.0"

@@ -1,5 +1,5 @@
 use env::Env;
-use machine_learning::q_learning;
+use machine_learning::q_learning::{self, rayon_parallel_q_learning};
 use std::sync::mpsc;
 use std::thread;
 use std::{error::Error, io, time::Duration};
@@ -63,7 +63,16 @@ fn main() -> Result<(), Box<dyn Error>> {
     let (tx, rx) = mpsc::channel();
     if replaying {
         let max_steps = game.maze.max_steps();
-        let q = q_learning::q_learning(&mut game, width * height * 20, max_steps, 0.1, 0.9);
+        // let q = q_learning::q_learning(&mut game, width * height * 20, max_steps, 0.1, 0.9);
+        let q = rayon_parallel_q_learning(
+            &game,
+            width * height * 40,
+            max_steps,
+            0.1,
+            0.9,
+            num_cpus::get() - 1,
+            20,
+        );
         let actions = q_learning::replay_best_path(&mut game, &q, max_steps);
         // let (q1, q2) = q_learning::double_q_learning(&mut game, width * height * 20, max_steps, 0.1, 0.9);
         // let actions = q_learning::replay_best_path_double_q(&mut game, &q1, &q2, max_steps);

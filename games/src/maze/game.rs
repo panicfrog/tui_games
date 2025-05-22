@@ -4,6 +4,7 @@ use ratatui::text::{Line, Span, Text};
 use super::map::{Action, MazeMap, MazeStatus, Position, TileType};
 use env::Env;
 
+#[derive(Debug, Clone)]
 pub struct Game {
     pub maze: MazeMap,
     player: Position,
@@ -14,7 +15,7 @@ pub struct Game {
     selected_button: VictoryButton,
 }
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Debug)]
 pub enum VictoryButton {
     Quit,
     Next,
