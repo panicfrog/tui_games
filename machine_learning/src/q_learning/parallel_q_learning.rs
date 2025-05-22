@@ -19,6 +19,7 @@ where
     E::Action: Copy + Eq + std::hash::Hash + std::fmt::Debug + Send + 'static,
     E: Env + Clone + Send + 'static,
 {
+    let epslion_segment_per_cycle = 1.0 / (num_cycles as f32);
     let episodes_per_cycle = episodes / num_cycles;
     let episodes_per_worker_per_cycle = episodes_per_cycle / num_workers;
 
@@ -26,6 +27,7 @@ where
     let mut global_q_table: HashMap<(E::State, E::Action), (f32, usize)> = HashMap::new();
 
     for cycle in 0..num_cycles {
+        let current_base_epsilon = epslion_segment_per_cycle * (cycle as f32);
         // 各worker并行训练各自Q表
         let envs: Vec<_> = (0..num_workers)
             .map(|_| (env.clone(), global_q_table.clone()))
@@ -39,10 +41,7 @@ where
                 let mut rng = env::rand::rng();
                 for episode in 0..episodes_per_worker_per_cycle {
                     let mut state = local_env.reset();
-                    let epsilon = (1.0
-                        - (episode + cycle * episodes_per_worker_per_cycle) as f32
-                            / (episodes_per_cycle * num_cycles) as f32)
-                        .max(0.05);
+                    let epsilon = 1.0 - current_base_epsilon - (episode as f32) / (episodes_per_worker_per_cycle as f32) * epslion_segment_per_cycle; 
 
                     for _ in 0..max_steps {
                         let actions = local_env.legal_actions(None);
@@ -107,10 +106,12 @@ where
                 merged
                     .entry(key)
                     .and_modify(|(sum, total_count)| {
-                        *sum += value * count as f32;
-                        *total_count += 1;
+                        if count > 0 {
+                            *sum += value as f32;
+                            *total_count += 1;
+                        }
                     })
-                    .or_insert((value * count as f32, count));
+                    .or_insert((0.0, 0));
             }
         }
         // 归一化

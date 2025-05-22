@@ -1,4 +1,5 @@
 use env::Env;
+use games::maze::map::Action;
 use machine_learning::q_learning::{self, rayon_parallel_q_learning};
 use std::sync::mpsc;
 use std::thread;
@@ -7,7 +8,6 @@ use std::{error::Error, io, time::Duration};
 use games::crossterm::event::{self, Event, KeyCode};
 use games::crossterm::terminal::{disable_raw_mode, enable_raw_mode};
 use games::crossterm::{execute, terminal::Clear, terminal::ClearType};
-use games::maze::map::Action;
 use games::ratatui::{
     backend::CrosstermBackend,
     layout::{Constraint, Layout},
@@ -55,7 +55,7 @@ fn main() -> Result<(), Box<dyn Error>> {
     let backend = CrosstermBackend::new(&mut stdout);
     let mut terminal = Terminal::new(backend)?;
     execute!(std::io::stdout(), Clear(ClearType::All))?;
-
+// 
     let mut replaying = true;
     let width = 21;
     let height = 11;
@@ -71,8 +71,9 @@ fn main() -> Result<(), Box<dyn Error>> {
             0.1,
             0.9,
             num_cpus::get() - 1,
-            20,
+            100,
         );
+        // println!("{:?}", &q);
         let actions = q_learning::replay_best_path(&mut game, &q, max_steps);
         // let (q1, q2) = q_learning::double_q_learning(&mut game, width * height * 20, max_steps, 0.1, 0.9);
         // let actions = q_learning::replay_best_path_double_q(&mut game, &q1, &q2, max_steps);
