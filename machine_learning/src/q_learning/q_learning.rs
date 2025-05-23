@@ -1,3 +1,5 @@
+use crate::q_learning::q_utils::random_action;
+
 use super::q_utils::{estimate_double_q_target, estimate_max_q_value};
 use env::rand::Rng;
 use env::Env;
@@ -22,6 +24,9 @@ where
     for episode in 0..episodes {
         let mut state = env.reset();
         let epsilon = (1.0 - episode as f32 / episodes as f32).max(0.05);
+        let mut exported_table = HashMap::new();
+        
+        let mut forced_actions: Vec<(E::State, E::Action)> = Vec::new();
 
         for _ in 0..max_steps {
             let actions = env.legal_actions(None);
@@ -30,46 +35,85 @@ where
             }
 
             let action = if actions.len() == 1 {
-                actions[0]
-            } else if rng.random::<f32>() < epsilon {
-                actions[rng.random_range(0..actions.len())]
+                let action = actions[0];
+                forced_actions.push((state, action));
+                // println!("{action:?} o");
+                action
             } else {
-                actions
-                    .iter()
-                    .copied()
-                    .max_by(|&a1, &a2| {
-                        let q1 = *q_table.get(&(state, a1)).unwrap_or(&0.0);
-                        let q2 = *q_table.get(&(state, a2)).unwrap_or(&0.0);
-                        q1.partial_cmp(&q2).unwrap_or(std::cmp::Ordering::Equal)
-                    })
-                    .unwrap_or_else(|| actions[rng.random_range(0..actions.len())])
+                if !forced_actions.is_empty() {
+                    let next_max_q = actions
+                        .iter()
+                        .map(|&a| *q_table.get(&(state, a)).unwrap_or(&0.0))
+                        .max_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal))
+                        .unwrap_or(0.0);
+                    
+                    let sequence_target = -0.01  + gamma.powi(forced_actions.len() as i32) * next_max_q;
+                    
+                    let update = alpha * (sequence_target - *q_table.get(&forced_actions[0]).unwrap_or(&0.0));
+                    for (s, a) in &forced_actions {
+                        *q_table.entry((*s, *a)).or_insert(0.0) += update;
+                    }
+                    forced_actions.clear();
+                }
+                if rng.random::<f32>() < epsilon {
+                    let action = random_action::<E>(&actions, state, &mut rng, &exported_table);
+                    exported_table.entry((state, action))
+                        .and_modify(|v| { *v += 1; })
+                        .or_insert(0);
+                    action
+                } else {
+                    let a = actions
+                        .iter()
+                        .copied()
+                        .max_by(|&a1, &a2| {
+                            let q1 = *q_table.get(&(state, a1)).unwrap_or(&0.0);
+                            let q2 = *q_table.get(&(state, a2)).unwrap_or(&0.0);
+                            q1.partial_cmp(&q2).unwrap_or(std::cmp::Ordering::Equal)
+                        })
+                        .unwrap_or_else(|| actions[rng.random_range(0..actions.len())]);
+                    a
+                }
             };
 
             let (next_state, _status) = env.step(action);
-            let reward = if env.is_win() {
-                10.0
-            } else if !env.is_terminal() {
-                -0.01
-            } else {
-                -1.0
-            };
+            
+            // 只有在非强制性动作时才立即更新 Q 值
+            if actions.len() > 1 {
+                let reward = if env.is_win() {
+                    10.0
+                } else if !env.is_terminal() {
+                    -0.01
+                } else {
+                    -1.0
+                };
 
-            let target = estimate_max_q_value(env, &q_table, next_state, action);
-            let entry = q_table.entry((state, action)).or_insert(0.0);
-            *entry += alpha * (reward + gamma * target - *entry);
+                let target = estimate_max_q_value(env, &q_table, next_state, action);
+                let entry = q_table.entry((state, action)).or_insert(0.0);
+                *entry += alpha * (reward + gamma * target - *entry);
+            }
 
             state = next_state;
 
-            if env.is_win() {
-                win_count += 1;
-                break;
-            }
-            if env.is_terminal() {
+            if env.is_win() || env.is_terminal() {
+                if !forced_actions.is_empty() {
+                    let final_reward = if env.is_win() { 10.0 } else { -1.0 };
+                    
+                    let sequence_value = -0.01 * ((forced_actions.len() - 1) as f32) + final_reward;
+                    
+                    let update = alpha * (sequence_value - *q_table.get(&forced_actions[0]).unwrap_or(&0.0));
+                    for (s, a) in &forced_actions {
+                        *q_table.entry((*s, *a)).or_insert(0.0) += update;
+                    }
+                    forced_actions.clear();
+                }
+                
+                if env.is_win() {
+                    win_count += 1;
+                }
                 break;
             }
         }
     }
-
     println!(
         "Win rate: {:.2}%",
         (win_count as f32 / episodes as f32) * 100.0

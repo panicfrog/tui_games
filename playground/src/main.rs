@@ -57,24 +57,24 @@ fn main() -> Result<(), Box<dyn Error>> {
     execute!(std::io::stdout(), Clear(ClearType::All))?;
 // 
     let mut replaying = true;
-    let width = 21;
-    let height = 11;
+    let width = 41;
+    let height = 21;
     let mut game = Game::new(width, height);
     let (tx, rx) = mpsc::channel();
     if replaying {
         let max_steps = game.maze.max_steps();
-        // let q = q_learning::q_learning(&mut game, width * height * 20, max_steps, 0.1, 0.9);
-        let cpus = num_cpus::get();
-        println!("cpus: {}", cpus);
-        let q = rayon_parallel_q_learning(
-            &game,
-            width * height * 20 * (cpus / 4),
-            max_steps,
-            0.1,
-            0.9,
-            cpus - 1,
-            40,
-        );
+        let q = q_learning::q_learning(&mut game, width * height * 5, max_steps, 0.1, 0.9);
+        // let cpus = num_cpus::get();
+        // println!("cpus: {}", cpus);
+        // let q = rayon_parallel_q_learning(
+        //     &game,
+        //     width * height * 20 * (cpus / 4),
+        //     max_steps,
+        //     0.1,
+        //     0.9,
+        //     cpus - 1,
+        //     40,
+        // );
         // println!("{:?}", &q);
         let actions = q_learning::replay_best_path(&mut game, &q, max_steps);
         // let (q1, q2) = q_learning::double_q_learning(&mut game, width * height * 20, max_steps, 0.1, 0.9);
