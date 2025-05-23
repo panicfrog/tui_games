@@ -1,4 +1,4 @@
-use super::q_utils::estimate_max_q_value;
+use super::q_utils::{estimate_max_q_value, random_action};
 use env::rand::Rng;
 use env::Env;
 use rayon::prelude::*;
@@ -37,6 +37,7 @@ where
             .map(|(env, q_table)| {
                 let mut local_env = env.clone();
                 let mut q_table = q_table.clone();
+                let mut exported_table: HashMap<(<E as Env>::State, <E as Env>::Action), usize> = HashMap::new();
 
                 let mut rng = env::rand::rng();
                 for episode in 0..episodes_per_worker_per_cycle {
@@ -52,7 +53,16 @@ where
                         let action = if actions.len() == 1 {
                             actions[0]
                         } else if rng.random::<f32>() < epsilon {
-                            actions[rng.random_range(0..actions.len())]
+                            let action = random_action::<E>(
+                                &actions,
+                                state,
+                                &mut rng,
+                                &exported_table,
+                            );
+                            exported_table.entry((state, action))
+                                .and_modify(|v| *v += 1)
+                                .or_insert(1);
+                            action
                         } else {
                             actions
                                 .iter()
@@ -79,7 +89,7 @@ where
                         // 只用本地表做max
                         let target = estimate_max_q_value(
                             &local_env,
-                            &q_table.iter().map(|(&k, &(v, _))| (k, v)).collect(),
+                            &q_table.iter().map(|(&k, &(v, _))| (k, v)).collect::<HashMap<(E::State, E::Action), f32>>(),
                             next_state,
                             action,
                         );

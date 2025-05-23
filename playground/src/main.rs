@@ -65,14 +65,15 @@ fn main() -> Result<(), Box<dyn Error>> {
         let max_steps = game.maze.max_steps();
         // let q = q_learning::q_learning(&mut game, width * height * 20, max_steps, 0.1, 0.9);
         let cpus = num_cpus::get();
+        println!("cpus: {}", cpus);
         let q = rayon_parallel_q_learning(
             &game,
             width * height * 20 * (cpus / 4),
             max_steps,
             0.1,
             0.9,
-            cpus,
-            10,
+            cpus - 1,
+            40,
         );
         // println!("{:?}", &q);
         let actions = q_learning::replay_best_path(&mut game, &q, max_steps);
