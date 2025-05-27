@@ -63,7 +63,7 @@ fn main() -> Result<(), Box<dyn Error>> {
     let (tx, rx) = mpsc::channel();
     if replaying {
         let max_steps = game.maze.max_steps();
-        let q = q_learning::q_learning(&mut game, width * height * 5, max_steps, 0.1, 0.9);
+        let q = q_learning::q_learning(&mut game, width * height * 4, max_steps, 0.1, 0.9);
         // let cpus = num_cpus::get();
         // println!("cpus: {}", cpus);
         // let q = rayon_parallel_q_learning(

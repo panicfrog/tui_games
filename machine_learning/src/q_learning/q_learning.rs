@@ -21,6 +21,10 @@ where
     let mut rng = env::rand::rng();
     let mut win_count = 0;
 
+    let win_reward = 10.0;
+    let lose_reward = -1.0;
+    let step_reward = lose_reward / (max_steps + 1) as f32;
+
     for episode in 0..episodes {
         let mut state = env.reset();
         let epsilon = (1.0 - episode as f32 / episodes as f32).max(0.05);
@@ -47,9 +51,7 @@ where
                         .max_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal))
                         .unwrap_or(0.0);
                     
-                    let sequence_target = -0.01  + gamma.powi(forced_actions.len() as i32) * next_max_q;
-                    
-                    let update = alpha * (sequence_target - *q_table.get(&forced_actions[0]).unwrap_or(&0.0));
+                    let update = alpha * (step_reward + gamma * next_max_q - *q_table.get(&forced_actions[0]).unwrap_or(&0.0));
                     for (s, a) in &forced_actions {
                         *q_table.entry((*s, *a)).or_insert(0.0) += update;
                     }
@@ -80,11 +82,11 @@ where
             // 只有在非强制性动作时才立即更新 Q 值
             if actions.len() > 1 {
                 let reward = if env.is_win() {
-                    10.0
+                    win_reward
                 } else if !env.is_terminal() {
-                    -0.01
+                    step_reward
                 } else {
-                    -1.0
+                    lose_reward
                 };
 
                 let target = estimate_max_q_value(env, &q_table, next_state, action);
@@ -98,9 +100,7 @@ where
                 if !forced_actions.is_empty() {
                     let final_reward = if env.is_win() { 10.0 } else { -1.0 };
                     
-                    let sequence_value = -0.01 * ((forced_actions.len() - 1) as f32) + final_reward;
-                    
-                    let update = alpha * (sequence_value - *q_table.get(&forced_actions[0]).unwrap_or(&0.0));
+                    let update =  alpha * (final_reward - *q_table.get(&forced_actions[0]).unwrap_or(&0.0));
                     for (s, a) in &forced_actions {
                         *q_table.entry((*s, *a)).or_insert(0.0) += update;
                     }
