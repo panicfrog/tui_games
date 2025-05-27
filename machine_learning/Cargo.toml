@@ -7,5 +7,7 @@ edition = "2021"
 crate-type = ["cdylib", "rlib"]
 
 [dependencies]
+candle-core = "0.9.1"
+candle-nn = "0.9.1"
 env = { path = "../env"}
 rayon = "1.10.0"
