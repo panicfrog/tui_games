@@ -203,15 +203,15 @@ fn main() -> Result<(), Box<dyn Error>> {
     execute!(std::io::stdout(), Clear(ClearType::All))?;
 
     let mut replaying = true;
-    let width = 11; // 使用较小的迷宫进行快速测试
-    let height = 11;
+    let width = 41;
+    let height = 21;
     let mut game = Game::new(width, height);
     let (tx, rx) = mpsc::channel();
 
     if replaying {
-        println!("开始训练...");
+        // println!("开始训练...");
         let max_steps = game.maze.max_steps();
-        println!("迷宫最大步数: {}", max_steps);
+        // println!("迷宫最大步数: {}", max_steps);
 
         // let q = q_learning::q_learning(&mut game, width * height * 4, max_steps, 0.1, 0.9);
         // let cpus = num_cpus::get();
@@ -231,7 +231,7 @@ fn main() -> Result<(), Box<dyn Error>> {
         // let actions = q_learning::replay_best_path_double_q(&mut game, &q1, &q2, max_steps);
 
         // 选择使用的算法：true为DQN，false为传统Q-learning
-        let use_dqn = true;
+        let use_dqn = false;
 
         let actions = if use_dqn {
             // 使用DQN
@@ -247,7 +247,7 @@ fn main() -> Result<(), Box<dyn Error>> {
             }
         } else {
             // 使用传统Q-learning
-            println!("使用传统Q-learning训练...");
+            // println!("使用传统Q-learning训练...");
             let q = q_learning::q_learning(&mut game, width * height * 4, max_steps, 0.1, 0.9);
             q_learning::replay_best_path(&mut game, &q, max_steps)
         };
@@ -256,7 +256,7 @@ fn main() -> Result<(), Box<dyn Error>> {
         game.reset();
 
         if let Some(actions) = actions {
-            println!("找到解决方案，路径长度: {}", actions.len());
+            // println!("找到解决方案，路径长度: {}", actions.len());
             let actions_clone = actions.clone();
             thread::spawn(move || {
                 thread::sleep(Duration::from_millis(300));
@@ -267,7 +267,7 @@ fn main() -> Result<(), Box<dyn Error>> {
                 tx.send(None).unwrap();
             });
         } else {
-            println!("未找到解决方案");
+            // println!("未找到解决方案");
             tx.send(None).unwrap();
         }
     }
