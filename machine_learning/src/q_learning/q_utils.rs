@@ -1,5 +1,5 @@
-use env::Env;
 use env::rand;
+use env::Env;
 use std::collections::HashMap;
 
 pub fn estimate_max_q_value<E: Env>(
@@ -45,10 +45,13 @@ where
         return actions[0];
     }
 
-    let result: Vec<(<E as Env>::Action, usize)> = actions.iter().map(|&a| {
-        let q = *exported_table.get(&(state, a)).unwrap_or(&0);
-        (a, q)
-    }).collect::<Vec<_>>();
+    let result: Vec<(<E as Env>::Action, usize)> = actions
+        .iter()
+        .map(|&a| {
+            let q = *exported_table.get(&(state, a)).unwrap_or(&0);
+            (a, q)
+        })
+        .collect::<Vec<_>>();
     let min_q = result.iter().map(|&(_, q)| q).min().unwrap_or(0);
     let min_actions: Vec<_> = result
         .iter()

@@ -8,3 +8,4 @@ games = { path = "../games" }
 env = { path = "../env" }
 machine_learning = { path = "../machine_learning" }
 num_cpus = "1.16.0"
+candle-core = "0.9.1"

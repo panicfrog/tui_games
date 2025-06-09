@@ -29,7 +29,7 @@ where
         let mut state = env.reset();
         let epsilon = (1.0 - episode as f32 / episodes as f32).max(0.05);
         let mut exported_table = HashMap::new();
-        
+
         let mut forced_actions: Vec<(E::State, E::Action)> = Vec::new();
 
         for _ in 0..max_steps {
@@ -50,8 +50,10 @@ where
                         .map(|&a| *q_table.get(&(state, a)).unwrap_or(&0.0))
                         .max_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal))
                         .unwrap_or(0.0);
-                    
-                    let update = alpha * (step_reward + gamma * next_max_q - *q_table.get(&forced_actions[0]).unwrap_or(&0.0));
+
+                    let update = alpha
+                        * (step_reward + gamma * next_max_q
+                            - *q_table.get(&forced_actions[0]).unwrap_or(&0.0));
                     for (s, a) in &forced_actions {
                         *q_table.entry((*s, *a)).or_insert(0.0) += update;
                     }
@@ -59,8 +61,11 @@ where
                 }
                 if rng.random::<f32>() < epsilon {
                     let action = random_action::<E>(&actions, state, &mut rng, &exported_table);
-                    exported_table.entry((state, action))
-                        .and_modify(|v| { *v += 1; })
+                    exported_table
+                        .entry((state, action))
+                        .and_modify(|v| {
+                            *v += 1;
+                        })
                         .or_insert(0);
                     action
                 } else {
@@ -78,7 +83,7 @@ where
             };
 
             let (next_state, _status) = env.step(action);
-            
+
             // 只有在非强制性动作时才立即更新 Q 值
             if actions.len() > 1 {
                 let reward = if env.is_win() {
@@ -99,14 +104,15 @@ where
             if env.is_win() || env.is_terminal() {
                 if !forced_actions.is_empty() {
                     let final_reward = if env.is_win() { 10.0 } else { -1.0 };
-                    
-                    let update =  alpha * (final_reward - *q_table.get(&forced_actions[0]).unwrap_or(&0.0));
+
+                    let update =
+                        alpha * (final_reward - *q_table.get(&forced_actions[0]).unwrap_or(&0.0));
                     for (s, a) in &forced_actions {
                         *q_table.entry((*s, *a)).or_insert(0.0) += update;
                     }
                     forced_actions.clear();
                 }
-                
+
                 if env.is_win() {
                     win_count += 1;
                 }

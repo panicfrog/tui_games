@@ -984,6 +984,7 @@ checksum = "3b3cff922bd51709b605d9ead9aa71031d81447142d828eb4a6eba76fe619f9b"
 name = "playground"
 version = "0.1.0"
 dependencies = [
+ "candle-core",
  "env",
  "games",
  "machine_learning",

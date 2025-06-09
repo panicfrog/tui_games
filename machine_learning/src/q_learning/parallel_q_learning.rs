@@ -37,12 +37,16 @@ where
             .map(|(env, q_table)| {
                 let mut local_env = env.clone();
                 let mut q_table = q_table.clone();
-                let mut exported_table: HashMap<(<E as Env>::State, <E as Env>::Action), usize> = HashMap::new();
+                let mut exported_table: HashMap<(<E as Env>::State, <E as Env>::Action), usize> =
+                    HashMap::new();
 
                 let mut rng = env::rand::rng();
                 for episode in 0..episodes_per_worker_per_cycle {
                     let mut state = local_env.reset();
-                    let epsilon = 1.0 - current_base_epsilon - (episode as f32) / (episodes_per_worker_per_cycle as f32) * epslion_segment_per_cycle; 
+                    let epsilon = 1.0
+                        - current_base_epsilon
+                        - (episode as f32) / (episodes_per_worker_per_cycle as f32)
+                            * epslion_segment_per_cycle;
 
                     for _ in 0..max_steps {
                         let actions = local_env.legal_actions(None);
@@ -53,13 +57,10 @@ where
                         let action = if actions.len() == 1 {
                             actions[0]
                         } else if rng.random::<f32>() < epsilon {
-                            let action = random_action::<E>(
-                                &actions,
-                                state,
-                                &mut rng,
-                                &exported_table,
-                            );
-                            exported_table.entry((state, action))
+                            let action =
+                                random_action::<E>(&actions, state, &mut rng, &exported_table);
+                            exported_table
+                                .entry((state, action))
                                 .and_modify(|v| *v += 1)
                                 .or_insert(1);
                             action
@@ -89,7 +90,10 @@ where
                         // 只用本地表做max
                         let target = estimate_max_q_value(
                             &local_env,
-                            &q_table.iter().map(|(&k, &(v, _))| (k, v)).collect::<HashMap<(E::State, E::Action), f32>>(),
+                            &q_table
+                                .iter()
+                                .map(|(&k, &(v, _))| (k, v))
+                                .collect::<HashMap<(E::State, E::Action), f32>>(),
                             next_state,
                             action,
                         );
