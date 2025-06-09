@@ -57,8 +57,8 @@ fn main() -> Result<(), Box<dyn Error>> {
     execute!(std::io::stdout(), Clear(ClearType::All))?;
 
     let mut replaying = true;
-    let width = 21;
-    let height = 11;
+    let width = 41;
+    let height = 21;
     let mut game = Game::new(width, height);
     let (tx, rx) = mpsc::channel();
     if replaying {
