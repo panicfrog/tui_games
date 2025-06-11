@@ -107,7 +107,7 @@ pub struct DQNAgent<E: Env, SE: StateEncoder<E>, AD: ActionDecoder<E>> {
     action_decoder: AD,
     device: Device,
 
-    // 两个网络的变量映射
+    // 分离的网络变量映射
     main_varmap: VarMap,
     target_varmap: VarMap,
 
@@ -144,19 +144,22 @@ where
         let state_size = state_encoder.state_size();
         let action_size = action_decoder.action_size();
 
-        // 简化实现：暂时使用同一个VarMap为两个网络
-        let varmap = VarMap::new();
-        let vb = VarBuilder::from_varmap(&varmap, DType::F32, &device);
+        // 分离主网络和目标网络的VarMap
+        let main_varmap = VarMap::new();
+        let target_varmap = VarMap::new();
+
+        let main_vb = VarBuilder::from_varmap(&main_varmap, DType::F32, &device);
+        let target_vb = VarBuilder::from_varmap(&target_varmap, DType::F32, &device);
 
         // 创建主网络
-        let q_network = DQN::new(state_size, hidden_size, action_size, vb.pp("main"))?;
+        let q_network = DQN::new(state_size, hidden_size, action_size, main_vb)?;
 
-        // 创建目标网络（使用同一个varmap但不同的前缀）
-        let target_network = DQN::new(state_size, hidden_size, action_size, vb.pp("target"))?;
+        // 创建目标网络（使用独立的VarMap）
+        let target_network = DQN::new(state_size, hidden_size, action_size, target_vb)?;
 
-        // 初始化优化器
+        // 只把主网络参数交给优化器
         let optimizer = AdamW::new(
-            varmap.all_vars(),
+            main_varmap.all_vars(),
             candle_nn::ParamsAdamW {
                 lr: learning_rate,
                 ..Default::default()
@@ -165,7 +168,7 @@ where
 
         let replay_buffer = ReplayBuffer::new(buffer_capacity);
 
-        let agent = Self {
+        let mut agent = Self {
             q_network,
             target_network,
             optimizer,
@@ -173,8 +176,8 @@ where
             state_encoder,
             action_decoder,
             device,
-            main_varmap: varmap.clone(),
-            target_varmap: varmap, // 使用同一个varmap
+            main_varmap,
+            target_varmap,
             gamma,
             epsilon,
             epsilon_decay,
@@ -185,7 +188,8 @@ where
             step_count: 0,
         };
 
-        // 由于使用同一个varmap，目标网络已经和主网络共享权重，无需额外初始化
+        // 初始化目标网络权重
+        agent.initialize_target_network()?;
 
         Ok(agent)
     }
@@ -276,18 +280,20 @@ where
             .gather(&action_indices.unsqueeze(1)?, 1)?
             .squeeze(1)?;
 
-        // 使用目标网络计算目标Q值
+        // 使用目标网络计算目标Q值，并截断梯度
         let next_q_values = self.target_network.forward(&next_state_batch)?;
-        let max_next_q = next_q_values.max(1)?;
+        let max_next_q = next_q_values.max(1)?; // 获取最大值
+        let max_next_q = max_next_q.detach(); // 关键：截断梯度
 
         // 计算目标值：reward + gamma * max_next_q * (1 - done)
         let ones = Tensor::ones((self.batch_size,), DType::F32, &self.device)?;
         let not_done = ones.sub(&dones_tensor)?;
-        let discounted_next_q = max_next_q.mul(&Tensor::from_vec(
+        let gamma_tensor = Tensor::from_vec(
             vec![self.gamma; self.batch_size],
             (self.batch_size,),
             &self.device,
-        )?)?;
+        )?;
+        let discounted_next_q = max_next_q.mul(&gamma_tensor)?;
         let target_q = rewards_tensor.add(&discounted_next_q.mul(&not_done)?)?;
 
         // 计算损失 (MSE)
@@ -296,16 +302,18 @@ where
         // 反向传播
         self.optimizer.backward_step(&loss)?;
 
-        // 更新epsilon
-        self.epsilon = (self.epsilon * self.epsilon_decay).max(self.epsilon_min);
-
-        // 更新目标网络
+        // 更新目标网络（每target_update_freq步）
         self.step_count += 1;
         if self.step_count % self.target_update_freq == 0 {
             self.update_target_network()?;
         }
 
         Ok(loss.to_scalar::<f32>()?)
+    }
+
+    /// 更新epsilon - 移到episode级别调用
+    pub fn update_epsilon(&mut self) {
+        self.epsilon = (self.epsilon * self.epsilon_decay).max(self.epsilon_min);
     }
 
     /// 更新目标网络权重
@@ -316,42 +324,34 @@ where
         self.hard_update_target_network()
     }
 
-    /// 初始化目标网络权重 - 首次设置时使用
-    ///
-    /// 由于两个网络使用不同的VarMap，我们需要手动复制权重值
-    /// 这个方法在创建DQN智能体时调用一次
-    fn initialize_target_network(&mut self) -> Result<()> {
-        // 获取主网络的参数
-        let main_vars = self.main_varmap.all_vars();
-        let target_vars = self.target_varmap.all_vars();
+    /// 按名字复制VarMap，避免顺序错位导致的shape mismatch
+    fn copy_varmap(src: &VarMap, dst: &VarMap) -> Result<()> {
+        let src_data = src.data().lock().unwrap();
+        let dst_data = dst.data().lock().unwrap();
 
-        if main_vars.len() != target_vars.len() {
-            return Err(candle_core::Error::Msg("网络参数数量不匹配".to_string()));
+        for (name, src_var) in src_data.iter() {
+            let Some(dst_var) = dst_data.get(name) else {
+                return Err(candle_core::Error::Msg(format!("目标网络缺少变量 {name}")));
+            };
+            dst_var.set(&src_var.as_tensor().clone())?; // clone 防止共用存储
         }
-
-        // 将主网络的权重值复制到目标网络
-        for (main_var, target_var) in main_vars.iter().zip(target_vars.iter()) {
-            let main_tensor = main_var.as_tensor();
-            let cloned_tensor = main_tensor.clone();
-            target_var.set(&cloned_tensor)?;
-        }
-
         Ok(())
     }
 
-    /// 硬更新：直接复制主网络权重到目标网络
+    /// 初始化目标网络权重 - 首次设置时使用
     ///
-    /// 由于现在使用同一个VarMap，我们需要手动复制主网络参数到目标网络参数
+    /// 将主网络的权重复制到目标网络
+    fn initialize_target_network(&mut self) -> Result<()> {
+        Self::copy_varmap(&self.main_varmap, &self.target_varmap)
+    }
+
+    /// 硬更新：直接复制主网络权重到目标网络
     ///
     /// # Returns
     /// * `Ok(())` - 更新成功
     /// * `Err(Error)` - 网络参数不匹配或其他错误
     fn hard_update_target_network(&mut self) -> Result<()> {
-        // 简化实现：暂时跳过权重复制，因为使用同一个VarMap
-        // 在实际训练中，我们会定期手动复制权重
-        // （移除调试打印以减少输出混乱）
-
-        Ok(())
+        Self::copy_varmap(&self.main_varmap, &self.target_varmap)
     }
 
     /// 软更新：目标网络 = τ * 主网络 + (1-τ) * 目标网络
@@ -545,15 +545,13 @@ where
             // 执行动作
             let (next_state, _status) = env.step(action);
 
-            // 改进奖励计算
+            // 改进奖励计算 - 使用更合理的奖励结构
             let reward = if env.is_win() {
-                100.0 // 增加胜利奖励
+                10.0 // 降低胜利奖励，与步数同量级
             } else if env.is_terminal() {
-                -10.0 // 增加失败惩罚
+                -1.0 // 适度的失败惩罚
             } else {
-                // 基于距离的奖励 - 鼓励朝目标方向移动
-                // 这里我们假设能访问到环境的内部状态来计算距离奖励
-                -0.1 // 小的步数惩罚
+                -0.01 // 轻微的步数惩罚，鼓励快速完成
             };
 
             let done = env.is_terminal() || env.is_win();
@@ -582,6 +580,9 @@ where
                 break;
             }
         }
+
+        // 每个episode结束后才更新epsilon
+        agent.update_epsilon();
 
         total_losses.push(episode_loss / steps as f32);
 

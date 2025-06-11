@@ -231,7 +231,7 @@ fn main() -> Result<(), Box<dyn Error>> {
         // let actions = q_learning::replay_best_path_double_q(&mut game, &q1, &q2, max_steps);
 
         // 选择使用的算法：true为DQN，false为传统Q-learning
-        let use_dqn = false;
+        let use_dqn = true;
 
         let actions = if use_dqn {
             // 使用DQN
